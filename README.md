@@ -62,6 +62,33 @@ if err == nil {
   verified, and a captured approval can't be replayed. Requests live at
   most 10 minutes.
 
+## Security model: what a service must do
+
+Anyone running as you can run `nod sign` with a request they wrote, and
+the sheet will show their words; if you approve, they hold a valid
+signature over *their* request. So a signature alone proves only that you
+approved *some* text. What makes it an approval of an action is the
+service's side:
+
+- **Make the request yourself, and only accept approvals for it.** Build
+  the `Request` (fresh random `ID`, short `Expires`, `Digest` of the exact
+  payload), call `Ask`, and `Verify` the answer against that same request,
+  in the same operation. Never offer an endpoint that accepts an
+  `Approval` from outside: then a self-made signature has nowhere to go.
+- **If you must accept approvals later** (a separate call, another
+  process), keep each pending request by `ID`, verify against the stored
+  request, and delete it on first use.
+- **Set `Requester` to who you authenticated**, never to what a caller
+  claims, so the sheet names the real asker.
+
+Istando does the first: the request exists only inside the agent's
+promote or delete call, and there is no route that takes an approval.
+
+Residual risk: someone running as you can still put up a sheet with
+misleading text. Its signature is useless to a service that follows the
+rules above, but it costs you a decision. Decline sheets you didn't
+expect.
+
 ## Build and try
 
 ```sh
