@@ -55,9 +55,10 @@ const (
 	MaxLifetime    = 10 * time.Minute
 )
 
-// Request is what the person approves. Service, Requester, Action and
-// Subject make up the dialog's main text; Reason is shown separately,
-// labeled as the requester's words. Digest binds the approval to the exact
+// Request is what the person approves. Service, Action and Subject make up
+// the dialog's main text; Requester (who asks, e.g. an agent) and Reason
+// (their words) follow on a line of their own. Leave Requester empty when
+// the person themself started the action: the sheet then names no one. Digest binds the approval to the exact
 // payload (for istando: the revision and content MAC being released).
 type Request struct {
 	V         int       `json:"v"`
@@ -116,10 +117,13 @@ func Digest(parts ...string) string {
 
 // Check reports what is wrong with a request before it is shown.
 func (r Request) Check(now time.Time) error {
-	for name, v := range map[string]string{"service": r.Service, "requester": r.Requester, "action": r.Action, "subject": r.Subject} {
+	for name, v := range map[string]string{"service": r.Service, "action": r.Action, "subject": r.Subject} {
 		if err := checkText(name, v, MaxFieldChars, true); err != nil {
 			return err
 		}
+	}
+	if err := checkText("requester", r.Requester, MaxFieldChars, false); err != nil {
+		return err
 	}
 	if err := checkText("reason", r.Reason, MaxReasonChars, false); err != nil {
 		return err

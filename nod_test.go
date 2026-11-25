@@ -107,6 +107,16 @@ func TestCheck(t *testing.T) {
 	if err := request(now).Check(now); err != nil {
 		t.Fatal(err)
 	}
+	// The person's own action names no requester.
+	own := request(now)
+	own.Requester, own.Reason = "", ""
+	if err := own.Check(now); err != nil {
+		t.Fatalf("no requester: %v", err)
+	}
+	own.Requester = "a\nb"
+	if err := own.Check(now); err == nil {
+		t.Error("newline in requester: accepted")
+	}
 }
 
 func TestPublicKeyText(t *testing.T) {

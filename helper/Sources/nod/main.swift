@@ -131,7 +131,7 @@ func sign(label: String) throws {
     }
     guard (req["v"] as? Int) == 1 else { throw Failure(code: .failure, message: "request version is not 1") }
     let service = try field(req, "service", max: maxField)
-    let requester = try field(req, "requester", max: maxField)
+    let requester = try field(req, "requester", max: maxField, required: false)
     let action = try field(req, "action", max: maxField)
     let subject = try field(req, "subject", max: maxField)
     let reason = try field(req, "reason", max: maxReason, required: false)
@@ -158,9 +158,12 @@ func sign(label: String) throws {
     } else {
         text = "get your approval for \(service) to \(action) \(subject)"
     }
-    text += "\n\nAsked by \(requester)"
-    if !reason.isEmpty {
-        text += ": \u{201C}\(reason)\u{201D}"
+    // Who asks, when it isn't the person themself, and their words.
+    let quoted = reason.isEmpty ? "" : "\u{201C}\(reason)\u{201D}"
+    if !requester.trimmingCharacters(in: .whitespaces).isEmpty {
+        text += "\n\nAsked by \(requester)" + (quoted.isEmpty ? "" : ": " + quoted)
+    } else if !quoted.isEmpty {
+        text += "\n\n" + quoted
     }
     let context = LAContext()
     context.localizedReason = text
