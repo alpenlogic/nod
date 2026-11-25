@@ -144,12 +144,15 @@ func sign(label: String) throws {
     guard left > 0 else { throw Failure(code: .declined, message: "request has expired") }
     guard left <= maxLifetime + 5 else { throw Failure(code: .failure, message: "request lives too long") }
 
-    // The sheet reads: "nod" is trying to <text>. The main text comes from
-    // the request's fields, which the service sets; the reason is the
-    // requester's own words and is labeled as such.
-    var text = "approve: \(requester) asks to \(action) \(subject) (\(service))"
+    // The sheet reads: "nod" is trying to <text>. (macOS adds the period.)
+    // The request section comes from the fields the service sets; the
+    // reason is the requester's own words, in its own section, quoted. A
+    // bar marks each section: the sheet shows plain text only.
+    var text = "get your approval:\n\n"
+        + "\u{2503} Requester: \(requester) (\(service)) asks\n"
+        + "\u{2503} your approval to \(action) \(subject)"
     if !reason.isEmpty {
-        text += ".\n\(requester) says: \u{201C}\(reason)\u{201D}"
+        text += "\n\n\u{2503} Reason: \u{201C}\(reason)\u{201D}"
     }
     let context = LAContext()
     context.localizedReason = text

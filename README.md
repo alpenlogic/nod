@@ -6,9 +6,12 @@ password, and let a service check that you really did.
 An agent asks a service (Istando, say) to release an entry. The service
 asks `nod`, the system sheet appears on your Mac:
 
-> "nod" is trying to approve: discobot asks to release
-> user.heather.finance:routing:1.0.0 (istando).
-> discobot says: "ready for Lori"
+> "nod" is trying to get your approval:
+>
+> ┃ Requester: discobot (istando) asks
+> ┃ your approval to promote user.heather.finance:routing to 1.0.0.RELEASE
+>
+> ┃ Reason: "ready for Lori"
 
 You touch the sensor (or type your password), and the service gets a
 signature it verifies before acting. Cancel, or let it time out, and the
