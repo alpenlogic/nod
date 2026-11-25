@@ -38,8 +38,8 @@ func sign(t *testing.T, k *ecdsa.PrivateKey, raw []byte) *Approval {
 }
 
 func request(now time.Time) Request {
-	return Request{V: Version, ID: NewID(), Service: "istando", Requester: "discobot", Action: "release",
-		Subject: "user.heather.finance:routing:1.0.0", Digest: Digest("3", "mac"), Reason: "ready for Lori",
+	return Request{V: Version, ID: NewID(), Service: "istando", Requester: "build-agent", Action: "release",
+		Subject: "user.heather.finance:routing:1.0.0", Digest: Digest("3", "mac"), Reason: "ready for review",
 		Expires: now.Add(2 * time.Minute)}
 }
 

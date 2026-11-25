@@ -19,7 +19,7 @@ enum Outcome {
 /// What the window shows.
 struct Prompt {
     let headline: String   // "istando needs your approval to promote ..."
-    let detail: String     // "Asked by discobot: “ready for Lori”", or ""
+    let detail: String     // "Asked by build-agent: “ready for review”", or ""
     let sheetReason: String // the system sheet's text, for the password fallback
     let deadline: Date
 }

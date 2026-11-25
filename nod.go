@@ -10,7 +10,7 @@
 //
 // A service enrolls the person's public key once, then for each action:
 //
-//	req := nod.Request{ID: nod.NewID(), Service: "istando", Requester: "discobot",
+//	req := nod.Request{ID: nod.NewID(), Service: "istando", Requester: "build-agent",
 //		Action: "release", Subject: "finance:routing:1.0.0", Digest: nod.Digest(rev, mac),
 //		Reason: agentWords, Expires: time.Now().Add(2 * time.Minute)}
 //	a, err := nod.Helper{}.Ask(ctx, req)   // shows the sheet on this Mac
@@ -168,7 +168,7 @@ func (r Request) Marshal() ([]byte, error) {
 // PublicKey is an enrolled approval key.
 type PublicKey struct {
 	Key   *ecdsa.PublicKey
-	Label string // who and where, e.g. heather@denali; informational
+	Label string // who and where, e.g. alice@laptop; informational
 }
 
 // keyPrefix starts the text form of a public key: "nod-p256 <base64

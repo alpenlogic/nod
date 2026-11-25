@@ -9,7 +9,7 @@ asks `nod`, and nod's window appears on the screen you're using:
 > **istando needs your approval to promote
 > user.heather.finance:routing to 1.0.0.RELEASE**
 >
-> Asked by discobot: "ready for Lori"
+> Asked by build-agent: "ready for review"
 >
 > (Touch ID) Touch ID to approve
 >
@@ -50,7 +50,7 @@ There is no approval server, so no project depends on another being up.
 
 ```go
 req := nod.Request{V: nod.Version, ID: nod.NewID(), Service: "istando",
-	Requester: "discobot", Action: "release", Subject: coord,
+	Requester: "build-agent", Action: "release", Subject: coord,
 	Digest: nod.Digest(rev, mac), Reason: agentWords,
 	Expires: time.Now().Add(2 * time.Minute)}
 a, err := nod.Helper{Path: helperPath}.Ask(ctx, req) // the sheet appears
