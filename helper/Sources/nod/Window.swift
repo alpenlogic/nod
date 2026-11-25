@@ -12,6 +12,7 @@ import LocalAuthenticationEmbeddedUI
 enum Outcome {
     case approved(LAContext) // this context has satisfied the key's access control
     case declined
+    case noAnswer // the request expired first
     case failed(Failure)
 }
 
@@ -48,7 +49,7 @@ final class ApprovalWindow: NSObject, NSWindowDelegate {
         panel.orderFrontRegardless()
 
         Timer.scheduledTimer(withTimeInterval: max(0, prompt.deadline.timeIntervalSinceNow), repeats: false) { _ in
-            MainActor.assumeIsolated { self.finish(.declined) }
+            MainActor.assumeIsolated { self.finish(.noAnswer) }
         }
         evaluate(touchContext, viaWindow: true)
         app.run()

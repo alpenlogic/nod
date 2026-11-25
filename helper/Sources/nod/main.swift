@@ -14,8 +14,8 @@
 // nod sign reads a request (JSON, the Go package's Request), builds the
 // window's text itself from the service, requester, action and subject,
 // shows the requester's reason only as their words, and signs the exact
-// bytes it read. Exit codes: 0 signed, 2 declined or expired, 3 unable to
-// ask, 1 any other error, 64 usage.
+// bytes it read. Exit codes: 0 signed, 2 declined, 4 no answer before the
+// request expired, 3 unable to ask, 1 any other error, 64 usage.
 
 import CryptoKit
 import Foundation
@@ -23,7 +23,7 @@ import Foundation
 import Security
 
 enum Code: Int32 {
-    case ok = 0, failure = 1, declined = 2, unavailable = 3, usage = 64
+    case ok = 0, failure = 1, declined = 2, unavailable = 3, noAnswer = 4, usage = 64
 }
 
 struct Failure: Error {
@@ -173,6 +173,7 @@ func sign(label: String) throws {
     switch ApprovalWindow(prompt: prompt, access: access).run() {
     case .approved(let c): context = c
     case .declined: throw Failure(code: .declined, message: "declined")
+    case .noAnswer: throw Failure(code: .noAnswer, message: "no answer before the request expired")
     case .failed(let f): throw f
     }
     // The context has already satisfied the key's access control; signing

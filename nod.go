@@ -82,9 +82,11 @@ type Approval struct {
 }
 
 var (
-	// ErrDeclined: the person cancelled, or the request expired before
-	// they answered.
+	// ErrDeclined: the person declined, or didn't answer in time
+	// (ErrNoAnswer, which matches ErrDeclined too).
 	ErrDeclined = errors.New("nod: declined")
+	// ErrNoAnswer: the request expired before the person answered.
+	ErrNoAnswer = fmt.Errorf("%w: no answer before the request expired", ErrDeclined)
 	// ErrUnavailable: the helper couldn't ask (no key enrolled, no GUI
 	// session, no Secure Enclave).
 	ErrUnavailable = errors.New("nod: approval unavailable")
@@ -250,10 +252,12 @@ type Helper struct {
 const (
 	exitDeclined    = 2
 	exitUnavailable = 3
+	exitNoAnswer    = 4
 )
 
 // Ask shows the request and returns the person's signed approval. It
-// returns ErrDeclined if they cancel or the request expires first, and
+// returns ErrDeclined if they decline (ErrNoAnswer, which also matches
+// ErrDeclined, if the request expires first), and
 // ErrUnavailable if the helper can't ask. Cancelling ctx dismisses the
 // sheet.
 func (h Helper) Ask(ctx context.Context, req Request) (*Approval, error) {
@@ -280,8 +284,8 @@ func (h Helper) Ask(ctx context.Context, req Request) (*Approval, error) {
 	err = cmd.Run()
 	var ee *exec.ExitError
 	switch {
-	case ctx.Err() != nil:
-		return nil, ErrDeclined
+	case ctx.Err() != nil, errors.As(err, &ee) && ee.ExitCode() == exitNoAnswer:
+		return nil, ErrNoAnswer
 	case errors.As(err, &ee) && ee.ExitCode() == exitDeclined:
 		return nil, ErrDeclined
 	case errors.As(err, &ee) && ee.ExitCode() == exitUnavailable:

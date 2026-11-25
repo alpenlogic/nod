@@ -176,8 +176,11 @@ func TestAsk(t *testing.T) {
 	if _, err := (Helper{Path: path}).Ask(context.Background(), other); err == nil || !strings.Contains(err.Error(), "other than the request") {
 		t.Fatalf("other request: %v", err)
 	}
-	if _, err := (Helper{Path: fakeHelper(t, k, 2)}).Ask(context.Background(), req); !errors.Is(err, ErrDeclined) {
+	if _, err := (Helper{Path: fakeHelper(t, k, 2)}).Ask(context.Background(), req); !errors.Is(err, ErrDeclined) || errors.Is(err, ErrNoAnswer) {
 		t.Fatalf("declined: %v", err)
+	}
+	if _, err := (Helper{Path: fakeHelper(t, k, 4)}).Ask(context.Background(), req); !errors.Is(err, ErrNoAnswer) || !errors.Is(err, ErrDeclined) {
+		t.Fatalf("no answer: %v", err)
 	}
 	if _, err := (Helper{Path: fakeHelper(t, k, 3)}).Ask(context.Background(), req); !errors.Is(err, ErrUnavailable) {
 		t.Fatalf("unavailable: %v", err)
