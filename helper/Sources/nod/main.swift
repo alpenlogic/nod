@@ -200,11 +200,35 @@ func classify(_ error: Error) -> Failure {
 
 // MARK: Main
 
+let usage = """
+usage: nod COMMAND [--label L]
+
+Approve what an agent asks to do with Touch ID or your login password.
+
+  enroll [--force]  Create your approval key in this Mac's Secure Enclave
+                    and print its public key. Then register it with each
+                    service that asks you, e.g. istando approver enroll.
+                    --force replaces an existing key (re-register it).
+  pubkey            Print the public key again.
+  sign              Read a request (JSON) on stdin, show the approval
+                    sheet, and print the signed approval. Services run
+                    this; you don't need to.
+  help              Show this.
+
+--label picks one of several keys (default "default").
+Keys live in ~/Library/Application Support/nod/.
+"""
+
 var args = Array(CommandLine.arguments.dropFirst())
 guard let command = args.first else {
-    fail(.usage, "usage: nod enroll|pubkey|sign [--label L] [--force]")
+    FileHandle.standardError.write(Data(usage.utf8))
+    exit(Code.usage.rawValue)
 }
 args.removeFirst()
+if ["help", "-h", "--help"].contains(command) {
+    print(usage, terminator: "")
+    exit(Code.ok.rawValue)
+}
 var label = "default"
 var force = false
 while !args.isEmpty {
@@ -220,7 +244,7 @@ do {
     case "enroll": try enroll(label: label, force: force)
     case "pubkey": try pubkey(label: label)
     case "sign": try sign(label: label)
-    default: fail(.usage, "unknown command \(command); want enroll, pubkey or sign")
+    default: fail(.usage, "unknown command \(command); nod help lists them")
     }
 } catch let f as Failure {
     fail(f.code, f.message)
