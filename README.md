@@ -6,11 +6,17 @@ password, and let a service check that you really did.
 An agent asks a service (Istando, say) to release an entry. The service
 asks `nod`, the system sheet appears on your Mac:
 
-> "nod" is trying to get your approval for istando:
+> **istando**
 >
-> promote user.heather.finance:routing to 1.0.0.RELEASE
+> istando is trying to get your approval to promote
+> user.heather.finance:routing to 1.0.0.RELEASE
 >
 > Asked by discobot: "ready for Lori".
+
+macOS writes "<app> is trying to" and the final period itself; nod
+writes the rest. The app is the service's: `nod app --service istando`
+makes `istando.app` around a copy of nod, so the sheet names the service
+asking, not the tool. That copy signs only istando's requests.
 
 You touch the sensor (or type your password), and the service gets a
 signature it verifies before acting. Cancel, or let it time out, and the
@@ -34,6 +40,9 @@ There is no approval server, so no project depends on another being up.
   - `nod enroll [--label L]`: create a key, print its public key line.
   - `nod pubkey [--label L]`: print it again.
   - `nod sign [--label L] < request`: show the sheet, print the approval.
+  - `nod app --service S [--dir D]`: make `S.app` (default in
+    `~/Applications/nod`) so the sheet names S; prints the program inside
+    for the service to run.
 - `istando.dev/nod` (Go): `Request`, `Helper.Ask` (runs the helper),
   `Verify`, `ParsePublicKey`.
 - `cmd/nod-try`: one approval end to end, to check a setup.

@@ -3,6 +3,7 @@
 //   nod enroll [--label L] [--force]   create a Secure Enclave key; print its public key
 //   nod pubkey [--label L]             print the public key again
 //   nod sign   [--label L] < request   show the request, sign it, print the approval
+//   nod app    --service S [--dir D]   make S.app, so the sheet names S, not nod
 //
 // The key is a P-256 key in the Secure Enclave, created with
 // .privateKeyUsage and .userPresence: every signature needs Touch ID or
@@ -144,12 +145,20 @@ func sign(label: String) throws {
     guard left > 0 else { throw Failure(code: .declined, message: "request has expired") }
     guard left <= maxLifetime + 5 else { throw Failure(code: .failure, message: "request lives too long") }
 
-    // The sheet reads: "nod" is trying to <text>. (macOS adds the period.)
-    // The service, action and subject come from the service; the reason is
-    // the requester's own words, quoted after their name.
-    var text = "get your approval for \(service):\n\n"
-        + "\(action) \(subject)\n\n"
-        + "Asked by \(requester)"
+    // The sheet reads: "<app> is trying to <text>." macOS supplies the app
+    // name and the period. Run from the app nod app made for a service,
+    // the name is the service's ("istando is trying to get your approval
+    // to promote ..."), and nod signs only that service's requests.
+    var text: String
+    if let app = appName() {
+        guard service == app else {
+            throw Failure(code: .failure, message: "this is \(app)'s approval app; the request is from \(service)")
+        }
+        text = "get your approval to \(action) \(subject)"
+    } else {
+        text = "get your approval for \(service) to \(action) \(subject)"
+    }
+    text += "\n\nAsked by \(requester)"
     if !reason.isEmpty {
         text += ": \u{201C}\(reason)\u{201D}"
     }
@@ -174,6 +183,62 @@ func sign(label: String) throws {
     let out = try JSONSerialization.data(withJSONObject: approval, options: [.sortedKeys])
     FileHandle.standardOutput.write(out)
     FileHandle.standardOutput.write(Data("\n".utf8))
+}
+
+/// appName is the service this copy of nod speaks for, when it runs
+/// inside an app made by nod app; nil for the bare command.
+func appName() -> String? {
+    guard Bundle.main.bundleIdentifier?.hasPrefix(appIDPrefix) == true else { return nil }
+    return Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String
+}
+
+let appIDPrefix = "dev.istando.nod."
+
+/// makeApp builds <dir>/<service>.app around a copy of this program, so
+/// the approval sheet names the service rather than nod. It prints the
+/// path of the program inside, for the service to run.
+func makeApp(service: String, dir: String) throws {
+    guard service.range(of: "^[a-z0-9][a-z0-9-]{0,31}$", options: .regularExpression) != nil else {
+        throw Failure(code: .usage, message: "the service name must be lowercase letters, digits and dashes")
+    }
+    let fm = FileManager.default
+    let app = URL(fileURLWithPath: (dir as NSString).expandingTildeInPath, isDirectory: true)
+        .appendingPathComponent(service + ".app", isDirectory: true)
+    let macos = app.appendingPathComponent("Contents/MacOS", isDirectory: true)
+    let exe = macos.appendingPathComponent("nod")
+    if fm.fileExists(atPath: app.path) {
+        // Replace only an app nod made.
+        guard Bundle(url: app)?.bundleIdentifier?.hasPrefix(appIDPrefix) == true else {
+            throw Failure(code: .failure, message: "\(app.path) exists and isn't one nod made")
+        }
+        try fm.removeItem(at: app)
+    }
+    try fm.createDirectory(at: macos, withIntermediateDirectories: true)
+    guard let me = Bundle.main.executableURL else {
+        throw Failure(code: .failure, message: "can't find this program to copy")
+    }
+    try fm.copyItem(at: me, to: exe)
+    let info: [String: Any] = [
+        "CFBundleIdentifier": appIDPrefix + service,
+        "CFBundleName": service,
+        "CFBundleDisplayName": service,
+        "CFBundleExecutable": "nod",
+        "CFBundlePackageType": "APPL",
+        "CFBundleInfoDictionaryVersion": "6.0",
+        "LSUIElement": true,
+    ]
+    let plist = try PropertyListSerialization.data(fromPropertyList: info, format: .xml, options: 0)
+    try plist.write(to: app.appendingPathComponent("Contents/Info.plist"))
+    // Sign the bundle ad hoc so its Info.plist is sealed with the program.
+    let cs = Process()
+    cs.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+    cs.arguments = ["--force", "--sign", "-", app.path]
+    try cs.run()
+    cs.waitUntilExit()
+    guard cs.terminationStatus == 0 else {
+        throw Failure(code: .failure, message: "codesign failed for \(app.path)")
+    }
+    print(exe.path)
 }
 
 /// classify maps an authentication error to an exit code: the person
@@ -215,6 +280,11 @@ Approve what an agent asks to do with Touch ID or your login password.
   sign              Read a request (JSON) on stdin, show the approval
                     sheet, and print the signed approval. Services run
                     this; you don't need to.
+  app --service S [--dir D]
+                    Make D/S.app (default ~/Applications/nod) around a
+                    copy of nod, so the sheet names S ("istando is trying
+                    to get your approval to ..."). Prints the program to
+                    give the service, e.g. istando-server -approve-helper.
   help              Show this.
 
 --label picks one of several keys (default "default").
@@ -233,11 +303,15 @@ if ["help", "-h", "--help"].contains(command) {
 }
 var label = "default"
 var force = false
+var service = ""
+var dir = "~/Applications/nod"
 while !args.isEmpty {
     let a = args.removeFirst()
     switch a {
     case "--label" where !args.isEmpty: label = args.removeFirst()
     case "--force": force = true
+    case "--service" where !args.isEmpty: service = args.removeFirst()
+    case "--dir" where !args.isEmpty: dir = args.removeFirst()
     default: fail(.usage, "unknown argument \(a)")
     }
 }
@@ -246,6 +320,7 @@ do {
     case "enroll": try enroll(label: label, force: force)
     case "pubkey": try pubkey(label: label)
     case "sign": try sign(label: label)
+    case "app": try makeApp(service: service, dir: dir)
     default: fail(.usage, "unknown command \(command); nod help lists them")
     }
 } catch let f as Failure {
