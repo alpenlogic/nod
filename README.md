@@ -4,19 +4,20 @@ Approve what an agent asks to do with Touch ID or your Mac login
 password, and let a service check that you really did.
 
 An agent asks a service (Istando, say) to release an entry. The service
-asks `nod`, the system sheet appears on your Mac:
+asks `nod`, and nod's window appears on the screen you're using:
 
-> **istando**
+> **istando needs your approval to promote
+> user.heather.finance:routing to 1.0.0.RELEASE**
 >
-> istando is trying to get your approval to promote
-> user.heather.finance:routing to 1.0.0.RELEASE
+> Asked by discobot: "ready for Lori"
 >
-> Asked by discobot: "ready for Lori".
+> (Touch ID) Touch ID to approve
+>
+> [Use Password…]                                   [Decline]
 
-macOS writes "<app> is trying to" and the final period itself; nod
-writes the rest. The app is the service's: `nod app --service istando`
-makes `istando.app` around a copy of nod, so the sheet names the service
-asking, not the tool. That copy signs only istando's requests.
+The words are the service's, not macOS's: nod draws its own window and
+runs Touch ID inside it. "Use Password…" (or a Mac without Touch ID)
+falls back to the system sheet.
 
 You touch the sensor (or type your password), and the service gets a
 signature it verifies before acting. Cancel, or let it time out, and the
@@ -36,13 +37,11 @@ There is no approval server, so no project depends on another being up.
 
 ## Parts
 
-- `helper/`: the `nod` command (Swift).
+- `helper/`: the `nod` command (Swift), packaged as `nod.app` by
+  `helper/make-app.sh`.
   - `nod enroll [--label L]`: create a key, print its public key line.
   - `nod pubkey [--label L]`: print it again.
   - `nod sign [--label L] < request`: show the sheet, print the approval.
-  - `nod app --service S [--dir D]`: make `S.app` (default in
-    `~/Applications/nod`) so the sheet names S; prints the program inside
-    for the service to run.
 - `istando.dev/nod` (Go): `Request`, `Helper.Ask` (runs the helper),
   `Verify`, `ParsePublicKey`.
 - `cmd/nod-try`: one approval end to end, to check a setup.
@@ -103,10 +102,10 @@ expect.
 ## Build and try
 
 ```sh
-cd helper && swift build -c release && cd ..
-helper/.build/release/nod enroll --label test
-go run ./cmd/nod-try -helper helper/.build/release/nod -label test \
-  -pub "$(helper/.build/release/nod pubkey --label test)"
+app=$(helper/make-app.sh)             # ad hoc; make-app.sh IDENTITY for Developer ID
+nod="$app/Contents/MacOS/nod"
+"$nod" enroll --label test
+go run ./cmd/nod-try -helper "$nod" -label test -pub "$("$nod" pubkey --label test)"
 ```
 
 The helper must run in your logged-in GUI session (a LaunchAgent counts)
