@@ -148,7 +148,7 @@ func sign(label: String) throws {
     // The request section comes from the fields the service sets; the
     // reason is the requester's own words, in its own section, quoted. A
     // bar marks each section: the sheet shows plain text only.
-    var text = "get your approval:\n\n"
+    var text = "request your approval:\n\n"
         + "\u{2503} Requester: \(requester) (\(service)) asks\n"
         + "\u{2503} your approval to \(action) \(subject)"
     if !reason.isEmpty {

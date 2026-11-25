@@ -6,7 +6,7 @@ password, and let a service check that you really did.
 An agent asks a service (Istando, say) to release an entry. The service
 asks `nod`, the system sheet appears on your Mac:
 
-> "nod" is trying to get your approval:
+> "nod" is trying to request your approval:
 >
 > ┃ Requester: discobot (istando) asks
 > ┃ your approval to promote user.heather.finance:routing to 1.0.0.RELEASE
