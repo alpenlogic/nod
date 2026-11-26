@@ -302,3 +302,43 @@ func (h Helper) Ask(ctx context.Context, req Request) (*Approval, error) {
 	}
 	return &a, nil
 }
+
+// Unlock asks the person to release the secret locked on this Mac as name
+// (nod lock). The window shows the words fixed when it was locked, plus
+// reason in quotes; the secret comes back only if they approve. Errors are
+// as for Ask. The caller should keep the secret in memory only.
+func (h Helper) Unlock(ctx context.Context, name, reason string) ([]byte, error) {
+	if err := checkText("reason", reason, MaxReasonChars, false); err != nil {
+		return nil, err
+	}
+	path := h.Path
+	if path == "" {
+		path = "nod"
+	}
+	ctx, cancel := context.WithTimeout(ctx, unlockTimeout)
+	defer cancel()
+	args := []string{"unlock", name}
+	if reason != "" {
+		args = append(args, "--reason", reason)
+	}
+	cmd := exec.CommandContext(ctx, path, args...)
+	var out, errb bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &errb
+	err := cmd.Run()
+	var ee *exec.ExitError
+	switch {
+	case ctx.Err() != nil, errors.As(err, &ee) && ee.ExitCode() == exitNoAnswer:
+		return nil, ErrNoAnswer
+	case errors.As(err, &ee) && ee.ExitCode() == exitDeclined:
+		return nil, ErrDeclined
+	case errors.As(err, &ee) && ee.ExitCode() == exitUnavailable:
+		return nil, fmt.Errorf("%w: %s", ErrUnavailable, strings.TrimSpace(errb.String()))
+	case err != nil:
+		return nil, fmt.Errorf("nod: helper: %v: %s", err, strings.TrimSpace(errb.String()))
+	}
+	return out.Bytes(), nil
+}
+
+// unlockTimeout is a little longer than the helper's own 2 minutes, so
+// the helper's "no answer" arrives first.
+const unlockTimeout = 2*time.Minute + 10*time.Second

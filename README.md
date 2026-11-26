@@ -99,6 +99,30 @@ misleading text. Its signature is useless to a service that follows the
 rules above, but it costs you a decision. Decline sheets you didn't
 expect.
 
+## Locked secrets
+
+nod can also keep a small secret, such as a vault's unseal key, behind
+the same gate, so a script can use it at login without leaving it
+readable by everything running as you:
+
+```sh
+pbpaste | nod lock vault-unseal --service OpenBao --action "unseal the vault"
+nod unlock vault-unseal --reason "unseal at login" | your-command-reading-stdin
+```
+
+Unlocking shows "OpenBao needs your approval to unseal the vault". Those
+words are fixed when you lock the secret; whoever unlocks it may add only
+a quoted reason. Each secret is encrypted to a Secure Enclave key of its
+own (ECIES: P-256 key agreement, HKDF-SHA256, AES-GCM), so approving one
+never unlocks another or signs an approval. The name and the window's
+words are part of the encryption, so a file edited to say something else
+won't decrypt. The secret goes to stdout only. From Go, use
+`nod.Helper{}.Unlock(ctx, name, reason)`.
+
+The locked file only works with this Mac's Secure Enclave: keep the
+secret somewhere else too. As with approvals, decline windows you didn't
+expect.
+
 ## Build and try
 
 ```sh

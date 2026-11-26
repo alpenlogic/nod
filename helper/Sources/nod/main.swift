@@ -3,6 +3,8 @@
 //   nod enroll [--label L] [--force]   create a Secure Enclave key; print its public key
 //   nod pubkey [--label L]             print the public key again
 //   nod sign   [--label L] < request   show the request, sign it, print the approval
+//   nod lock NAME --service S --action A [--force] < secret
+//   nod unlock NAME [--reason R] > secret   (Locked.swift)
 //
 // The key is a P-256 key in the Secure Enclave, created with
 // .privateKeyUsage and .userPresence: every signature needs Touch ID or
@@ -235,10 +237,19 @@ Approve what an agent asks to do with Touch ID or your login password.
   sign              Read a request (JSON) on stdin, show the approval
                     window, and print the signed approval. Services run
                     this; you don't need to.
+  lock NAME --service S --action A [--force]
+                    Lock a small secret (stdin, up to 4 KiB) behind Touch
+                    ID. Unlocking it asks "S needs your approval to A";
+                    those words are fixed now. Keep a copy elsewhere: the
+                    locked file works only on this Mac.
+  unlock NAME [--reason R]
+                    Show the approval window and, if you approve, write
+                    the secret to stdout.
   help              Show this.
 
 --label picks one of several keys (default "default").
-Keys live in ~/Library/Application Support/nod/.
+Keys live in ~/Library/Application Support/nod/, locked secrets in its
+locked/ folder.
 """
 
 var args = Array(CommandLine.arguments.dropFirst())
@@ -253,10 +264,19 @@ if ["help", "-h", "--help"].contains(command) {
 }
 var label = "default"
 var force = false
+var name = "", service = "", action = "", reason = ""
+if ["lock", "unlock"].contains(command) {
+    guard let n = args.first, !n.hasPrefix("-") else { fail(.usage, "nod \(command) needs a NAME") }
+    name = n
+    args.removeFirst()
+}
 while !args.isEmpty {
     let a = args.removeFirst()
     switch a {
     case "--label" where !args.isEmpty: label = args.removeFirst()
+    case "--service" where !args.isEmpty && command == "lock": service = args.removeFirst()
+    case "--action" where !args.isEmpty && command == "lock": action = args.removeFirst()
+    case "--reason" where !args.isEmpty && command == "unlock": reason = args.removeFirst()
     case "--force": force = true
     default: fail(.usage, "unknown argument \(a)")
     }
@@ -266,6 +286,8 @@ do {
     case "enroll": try enroll(label: label, force: force)
     case "pubkey": try pubkey(label: label)
     case "sign": try sign(label: label)
+    case "lock": try lock(name: name, service: service, action: action, force: force)
+    case "unlock": try unlock(name: name, reason: reason)
     default: fail(.usage, "unknown command \(command); nod help lists them")
     }
 } catch let f as Failure {

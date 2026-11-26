@@ -28,14 +28,18 @@ struct Prompt {
 final class ApprovalWindow: NSObject, NSWindowDelegate {
     private let prompt: Prompt
     private let access: SecAccessControl
+    private let operation: LAAccessControlOperation
     private var panel: NSPanel!
     private let touchContext = LAContext()
     private var passwordContext: LAContext?
     private(set) var outcome: Outcome?
 
-    init(prompt: Prompt, access: SecAccessControl) {
+    /// operation is what the approved context will do with the key:
+    /// .useKeySign to sign, .useKeyKeyExchange to decrypt a locked secret.
+    init(prompt: Prompt, access: SecAccessControl, operation: LAAccessControlOperation = .useKeySign) {
         self.prompt = prompt
         self.access = access
+        self.operation = operation
     }
 
     /// Shows the window and runs until the person answers or the request
@@ -142,10 +146,11 @@ final class ApprovalWindow: NSObject, NSWindowDelegate {
 
     private func evaluate(_ context: LAContext, viaWindow: Bool) {
         let access = self.access
+        let operation = self.operation
         let reason = prompt.sheetReason
         Task { @MainActor in
             do {
-                try await context.evaluateAccessControl(access, operation: .useKeySign, localizedReason: reason)
+                try await context.evaluateAccessControl(access, operation: operation, localizedReason: reason)
                 self.finish(.approved(context))
             } catch {
                 guard self.outcome == nil else { return }

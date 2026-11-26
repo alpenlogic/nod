@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -189,5 +190,31 @@ func TestAsk(t *testing.T) {
 	cancel()
 	if _, err := (Helper{Path: path}).Ask(ctx, req); !errors.Is(err, ErrDeclined) {
 		t.Fatalf("cancelled: %v", err)
+	}
+}
+
+// Unlock passes the name and reason to nod unlock and maps its exit codes.
+func TestUnlock(t *testing.T) {
+	dir := t.TempDir()
+	script := func(body string) string {
+		p := filepath.Join(dir, fmt.Sprintf("nod%d", len(body)))
+		if err := os.WriteFile(p, []byte("#!/bin/sh\n"+body+"\n"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	ok := script(`[ "$1 $2 $3 $4" = "unlock vault-key --reason boot" ] || exit 1; printf 's3cret'`)
+	got, err := Helper{Path: ok}.Unlock(context.Background(), "vault-key", "boot")
+	if err != nil || string(got) != "s3cret" {
+		t.Fatalf("got %q %v", got, err)
+	}
+	for code, want := range map[int]error{2: ErrDeclined, 4: ErrNoAnswer, 3: ErrUnavailable} {
+		p := script(fmt.Sprintf("exit %d", code))
+		if _, err := (Helper{Path: p}).Unlock(context.Background(), "vault-key", ""); !errors.Is(err, want) {
+			t.Errorf("exit %d: %v, want %v", code, err, want)
+		}
+	}
+	if _, err := (Helper{Path: ok}).Unlock(context.Background(), "vault-key", "bad\x1b[2Jreason"); err == nil {
+		t.Error("control characters in the reason accepted")
 	}
 }
